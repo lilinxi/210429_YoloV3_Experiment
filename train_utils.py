@@ -14,26 +14,27 @@ def compute_map(
         validate_data_loader: torch.utils.data.dataloader.DataLoader,  # 验证集
         cuda: bool,
 ):
-    os.system("rm -rf ./outer_map_input")
-    os.system("mkdir outer_map_input")
-    os.system("mkdir outer_map_input/detection_result")
-    os.system("mkdir outer_map_input/ground_truth")
+    os.system("sudo rm -rf ./outer_map_input")
+    os.system("sudo mkdir outer_map_input")
+    os.system("sudo mkdir outer_map_input/detection_result")
+    os.system("sudo mkdir outer_map_input/ground_truth")
 
-    yolov3 = yolov3.eval()
-    for batch_index, (tensord_images, truth_annotation_list) in enumerate(validate_data_loader):
-        print("batch_index:", batch_index)
-        if cuda:
-            tensord_images = tensord_images.cuda()
-        for step in range(tensord_images.shape[0]):
-            print("step:", step)
-            # 4. 预测结果并记录
-            yolov3.predict_with_eval(
-                tensord_images[step],
-                truth_annotation_list[step],
-            )
+    with tqdm.tqdm(total=len(validate_data_loader), desc=f"Compute mAP") as pbar:
+        for batch_index, (tensord_images, truth_annotation_list) in enumerate(validate_data_loader):
+            # print("batch_index:", batch_index)
+            if cuda:
+                tensord_images = tensord_images.cuda()
+            for step in range(tensord_images.shape[0]):
+                # print("step:", step)
+                # 4. 预测结果并记录
+                yolov3.predict_with_eval(
+                    tensord_images[step],
+                    truth_annotation_list[step],
+                )
+            pbar.update(1)  # 进度条更新
 
-    os.system("python3 ./compute_map.py")
-    os.system("rm -rf ./outer_map_input")
+    os.system("sudo python3 ./compute_map.py")
+    os.system("sudo rm -rf ./outer_map_input")
 
 
 def train_one_epoch(
@@ -149,9 +150,6 @@ def train_one_epoch(
         yolov3_net.state_dict(),
         os.path.join(os.path.join(os.getcwd(), "logs"), test_name + "_" + ret + ".pth")
     )
-
-    # step4. 计算 mAP
-    compute_map(yolov3_net, validate_data_loader, cuda)
 
 
 def load_pretrained_weights(net: torch.nn.Module, weights_path: str, cuda: bool):

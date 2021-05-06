@@ -26,18 +26,22 @@ class Compose(object):
         return image, boxes
 
 
-def get_transforms(config: dict, train: bool) -> Compose:
+def get_transforms(config: dict, train: bool, enhancement: bool) -> Compose:
     """
     :param train: 是否是训练集，训练集包含额外的数据增强变换，且训练集只返回标注框，验证集返回标注字典
     :return:
     """
     transforms = []
-    if train:
+    if train and enhancement:
         transforms.append(ReformAndExtractBoxes())
         # transforms.append(ScaleImageAndBoxes(config=config))
         transforms.append(RandomScaleImageAndBoxes(config=config))
         transforms.append(RandomTransformImage())
         transforms.append(RandomFlipImageAndBoxes(config=config))
+        transforms.append(NormImageAndBoxes(config=config))
+    elif train:
+        transforms.append(ReformAndExtractBoxes())
+        transforms.append(ScaleImageAndBoxes(config=config))
         transforms.append(NormImageAndBoxes(config=config))
     else:
         transforms.append(ScaleImage(config=config))

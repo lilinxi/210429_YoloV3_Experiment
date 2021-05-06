@@ -27,11 +27,11 @@ if __name__ == "__main__":
     # 4. 遍历数据集
     EPOCH = 1
     for epoch in range(EPOCH):
-        print("Epoch:", epoch)
+        # print("Epoch:", epoch)
         for batch_index, (tensord_images, tensord_boxes_list) in enumerate(voc_dataloader):
-            print("batch_index:", batch_index)
+            # print("batch_index:", batch_index)
             for step in range(BATCH_SIZE):
-                print("step:", step)
+                # print("step:", step)
                 # 4. 预测结果并记录
                 image = yolov3.predict_with_loss(
                     tensord_images[step],

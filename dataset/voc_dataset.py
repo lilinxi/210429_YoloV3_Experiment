@@ -9,7 +9,7 @@ import dataset.transform
 
 
 class VOCDataset(torch.utils.data.Dataset):
-    def __init__(self, config: dict, image_set: str, train: bool) -> None:
+    def __init__(self, config: dict, image_set: str, train: bool, enhancement: bool) -> None:
         super().__init__()
 
         self.config = config
@@ -17,7 +17,7 @@ class VOCDataset(torch.utils.data.Dataset):
             root=self.config["dataset_root"],
             image_set=image_set,
         )
-        self.transforms: dataset.transform.Compose = dataset.transform.get_transforms(self.config, train)
+        self.transforms: dataset.transform.Compose = dataset.transform.get_transforms(self.config, train, enhancement)
 
     def __getitem__(self, index: int) -> (PIL.Image.Image, dict):  # 训练集 -> (PIL.Image.Image, numpy.ndarry):
         (raw_image, raw_annotation) = self.voc2012_dataset[index]
@@ -62,11 +62,13 @@ class VOCDataset(torch.utils.data.Dataset):
             num_workers: int = 0,
             drop_last: bool = True,
             sampler: torch.utils.data.Sampler = None,
+            enhancement: bool = True,
     ) -> torch.utils.data.DataLoader:
         voc_dataset = VOCDataset(
             config=config,
             image_set=image_set,
-            train=train
+            train=train,
+            enhancement=enhancement,
         )
 
         voc_dataloader = torch.utils.data.DataLoader(

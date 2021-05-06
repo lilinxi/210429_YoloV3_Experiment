@@ -5,7 +5,7 @@ import numpy
 import torch.utils.data
 
 import conf.config
-import model.yolov3net, model.yolov3loss
+import model.yolov3net, model.yolov3loss, model.yolov3
 import dataset.voc_dataset
 import train_utils
 
@@ -31,6 +31,8 @@ if __name__ == "__main__":
     Unfreeze_Train_Batch_Size = 32
     Unfreeze_Eval_Batch_Size = 16
 
+    Map_Batch_Size = 256
+
     Init_Epoch = 0  # 起始世代
     Freeze_Epoch = 50  # 冻结训练的世代
     Unfreeze_Epoch = 2000  # 总训练世代
@@ -48,17 +50,16 @@ if __name__ == "__main__":
     Image_Set = "trainval"
     Validation_Split = 0.05  # 验证集大小
 
-    Parallel = True
+    Parallel = True and Config["cuda"]
 
-    Test_Name = "Voc_Test_4_1"
+    Test_Name = "Voc_Experiment_1_4"
+
+    #################################################################################################################
 
     # 2. 创建 yolo 模型，训练前一定要修改 Config 里面的 classes 参数，训练的是 YoloNet 不是 Yolo
     yolov3_net = model.yolov3net.YoloV3Net(Config)
 
-    # 3. 加载 darknet53 的权值作为预训练权值
-    train_utils.load_pretrained_weights(yolov3_net, Config["pretrained_weights_path"], Config["cuda"])
-
-    # 4. 开启训练模式
+    # 3. 开启训练模式
     yolov3_net = yolov3_net.train()
 
     if Config["cuda"]:
@@ -67,6 +68,9 @@ if __name__ == "__main__":
         yolov3_net = yolov3_net.cuda()
 
     print("yolov3_net in cuda") if Config["cuda"] else print("yolov3_net not in cuda")
+
+    # 4. 加载 darknet53 的权值作为预训练权值（加载的是 gpu 权重，要在 DataParallel 之后）
+    train_utils.load_pretrained_weights(yolov3_net, Config["pretrained_weights_path"], Config["cuda"])
 
     # 5. 建立 loss 函数
     yolov3_loss = model.yolov3loss.YoloV3Loss(Config)
@@ -92,6 +96,7 @@ if __name__ == "__main__":
         num_workers=Num_Workers,
         drop_last=False,
         sampler=train_sampler,
+        enhancement=True,
     )
 
     freeze_validate_data_loader = dataset.voc_dataset.VOCDataset.Dataloader(
@@ -103,6 +108,7 @@ if __name__ == "__main__":
         num_workers=Num_Workers,
         drop_last=False,
         sampler=valid_sampler,
+        enhancement=False,
     )
 
     # 6.2 解冻训练数据集
@@ -115,6 +121,7 @@ if __name__ == "__main__":
         num_workers=Num_Workers,
         drop_last=False,
         sampler=train_sampler,
+        enhancement=True,
     )
 
     unfreeze_validate_data_loader = dataset.voc_dataset.VOCDataset.Dataloader(
@@ -126,11 +133,42 @@ if __name__ == "__main__":
         num_workers=Num_Workers,
         drop_last=False,
         sampler=valid_sampler,
+        enhancement=False,
+    )
+
+    # 6.3 mAP 计算数据集
+    mAP_train_data_loader = dataset.voc_dataset.VOCDataset.Dataloader(
+        config=Config,
+        image_set=Image_Set,
+        batch_size=Map_Batch_Size,
+        train=False,
+        shuffle=False,  # Suffle 和 Sampler 只能有一个，Sampler 已经 Suffle 了
+        num_workers=Num_Workers,
+        drop_last=False,
+        sampler=train_sampler,
+        enhancement=True,
+    )
+
+    mAP_validate_data_loader = dataset.voc_dataset.VOCDataset.Dataloader(
+        config=Config,
+        image_set=Image_Set,
+        batch_size=Map_Batch_Size,
+        train=False,
+        shuffle=False,  # Suffle 和 Sampler 只能有一个，Sampler 已经 Suffle 了
+        num_workers=Num_Workers,
+        drop_last=False,
+        sampler=valid_sampler,
+        enhancement=False,
     )
 
     # 初始 map
-    train_utils.compute_map(yolov3_net, freeze_validate_data_loader, Freeze_Eval_Batch_Size, Config["cuda"])
-    exit(-1)
+    yolov3 = model.yolov3.YoloV3(Config, with_net=False)
+    yolov3.net = yolov3_net.eval()
+
+    # print("mAP_train_data_loader:")
+    # train_utils.compute_map(yolov3, mAP_train_data_loader, Config["cuda"])
+    # print("mAP_validate_data_loader:")
+    # train_utils.compute_map(yolov3, mAP_validate_data_loader, Config["cuda"])
 
     # 7. 粗略训练预测头
 
@@ -139,8 +177,12 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=Freeze_Epoch_Gamma)
 
     # 7.2 冻结特征网络
-    for param in yolov3_net.module.backbone.parameters():
-        param.requires_grad = False
+    if Parallel:
+        for param in yolov3_net.module.backbone.parameters():
+            param.requires_grad = False
+    else:
+        for param in yolov3_net.backbone.parameters():
+            param.requires_grad = False
 
     # 7.3 训练若干 Epoch
     for epoch in range(Init_Epoch, Freeze_Epoch):
@@ -158,6 +200,13 @@ if __name__ == "__main__":
             Config["cuda"],
         )
         lr_scheduler.step()  # 更新步长
+        # 计算 mAP
+        if (epoch + 1) % 10 == 0:
+            yolov3.net = yolov3_net.eval()
+            # print("\nmAP_train_data_loader:")
+            train_utils.compute_map(yolov3, mAP_train_data_loader, Config["cuda"])
+            # print("\nmAP_validate_data_loader:")
+            train_utils.compute_map(yolov3, mAP_validate_data_loader, Config["cuda"])
 
     # 8. 精细训练预测头和特征网络
 
@@ -166,8 +215,12 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=Unfreeze_Epoch_Gamma)
 
     # 8.2 解冻特征网络
-    for param in yolov3_net.module.backbone.parameters():
-        param.requires_grad = True
+    if Parallel:
+        for param in yolov3_net.module.backbone.parameters():
+            param.requires_grad = True
+    else:
+        for param in yolov3_net.backbone.parameters():
+            param.requires_grad = True
 
     # 8.3 训练若干 Epoch
     for epoch in range(Freeze_Epoch, Unfreeze_Epoch):
@@ -185,3 +238,10 @@ if __name__ == "__main__":
             Config["cuda"],
         )
         lr_scheduler.step()  # 更新步长
+        # 计算 mAP
+        if (epoch + 1) % 5 == 0:
+            yolov3.net = yolov3_net.eval()
+            # print("\nmAP_train_data_loader:")
+            train_utils.compute_map(yolov3, mAP_train_data_loader, Config["cuda"])
+            # print("\nmAP_validate_data_loader:")
+            train_utils.compute_map(yolov3, mAP_validate_data_loader, Config["cuda"])

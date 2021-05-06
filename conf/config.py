@@ -32,9 +32,9 @@ PennFudanConfig: dict = {
     # 2. 数据集专属配置
     # "dataset_root": "/Users/limengfan/Dataset/PennFudanPed",
     "dataset_root": "/home/lenovo/data/lmf/Dataset/PennFudanPed",
-    # "weights_path": "/Users/limengfan/PycharmProjects/210414_CfgYoloV3/logs/"
+    # "weights_path": "/Users/limengfan/PycharmProjects/210429_YoloV3_Experiment/logs/"
     #                 "Pennfudan_Test_3_2_Epoch697-Train_Loss0.8573-Val_Loss4.8586.pth",  # 模型权重
-    "weights_path": "/home/lenovo/data/lmf/210414_CfgYoloV3Sftp/logs/"
+    "weights_path": "/home/lenovo/data/lmf/210429_YoloV3_ExperimentSftp/logs/"
                     "Voc_Test_3_1_Epoch162-Train_Loss2.2315-Val_Loss4.3770.pth",  # 模型权重
     "pretrained_weights_path": os.path.join(os.getcwd(), "outer_weights", "demo_darknet53_weights.pth"),  # 预训练模型权重
     "classes": 1,  # 分类数目
@@ -57,19 +57,19 @@ VocConfig: dict = {
     "image_height": 416,  # 输入图片高度
     "image_width": 416,  # 输入图片宽度
     "conf_threshold": 0.05,  # 正确预测框的最小置信度
-    "nms_iou_threshold": 0.3,  # 判断预测框重合的最大 iou 阈值
+    "nms_iou_threshold": 0.2,  # 判断预测框重合的最大 iou 阈值
     "cuda": True and torch.cuda.is_available(),  # 是否使用 GPU
     # 2. 数据集专属配置
-    "dataset_root": "/Users/limengfan/Dataset/VOC/VOC2012Train",
-    # "dataset_root": "/home/lenovo/data/lmf/Dataset/voc/VOCtrainval_11-May-2012",
-    "weights_path": "/Users/limengfan/PycharmProjects/210414_CfgYoloV3/logs/"
-                    "Voc_Test_2_5_Epoch157-Train_Loss3.7029-Val_Loss4.4745.pth",  # 模型权重
-    # "weights_path": "/home/lenovo/data/lmf/210414_CfgYoloV3Sftp/logs/"
-    #                 "Voc_Test2Epoch77-Train_Loss0.0538-Val_Loss22.3093.pth",  # 模型权重
+    # "dataset_root": "/Users/limengfan/Dataset/VOC/VOC2012Train",
+    "dataset_root": "/home/lenovo/data/lmf/Dataset/voc/VOCtrainval_11-May-2012",
+    # "weights_path": "/Users/limengfan/PycharmProjects/210429_YoloV3_Experiment/logs/"
+    #                 "Voc_Test_2_5_Epoch157-Train_Loss3.7029-Val_Loss4.4745.pth",  # 模型权重
+    "weights_path": "/home/lenovo/data/lmf/210429_YoloV3_ExperimentSftp/logs/"
+                    "Voc_Test2Epoch77-Train_Loss0.0538-Val_Loss22.3093.pth",  # 模型权重
     "pretrained_weights_path": os.path.join(os.getcwd(), "outer_weights", "demo_darknet53_weights.pth"),  # 预训练模型权重
-    # "pretrained_weights_path": "/Users/limengfan/PycharmProjects/210414_CfgYoloV3/logs/"
-    # "pretrained_weights_path": "/home/lenovo/data/lmf/210414_CfgYoloV3Sftp/logs/"
-    #                            "Voc_Test_2_5_Epoch100-Train_Loss4.1911-Val_Loss4.3965.pth",  # 预训练模型权重
+    # "pretrained_weights_path": "/Users/limengfan/PycharmProjects/210429_YoloV3_Experiment/logs/"
+    # "pretrained_weights_path": "/home/lenovo/data/lmf/210429_YoloV3_ExperimentSftp/logs/"
+    #                            "Voc_Experiment_1_2_Epoch0023-Train_Loss6.2914-Val_Loss7.0953.pth",  # 预训练模型权重
     "classes": 20,  # 分类数目
     "labels": [
         line.strip() for line in

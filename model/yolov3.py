@@ -23,40 +23,41 @@ class YoloV3(object):
     对 YoloV3 的三层预测结果提供解析
     """
 
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: dict, with_net: bool = True) -> None:
         super().__init__()
 
         self.config = config
         self.cuda = self.config["cuda"]
-        self.generate()
+        self.generate(with_net)
 
-    def generate(self):
+    def generate(self, with_net: bool):
         """
         初始化预测模型和解析工具
         :return:
         """
         print("YoloV3 generate...")
         # 1. 生成模型
-        self.net = model.yolov3net.YoloV3Net(self.config)
-        if self.cuda:
-            self.net = self.net.cuda()
-        # 2. 加载模型权重
-        device = torch.device("cuda") if self.config["cuda"] else torch.device("cpu")
-        state_dict = torch.load(self.config["weights_path"], map_location=device)
+        if with_net:
+            self.net = model.yolov3net.YoloV3Net(self.config)
+            if self.cuda:
+                self.net = self.net.cuda()
+            # 2. 加载模型权重
+            device = torch.device("cuda") if self.config["cuda"] else torch.device("cpu")
+            state_dict = torch.load(self.config["weights_path"], map_location=device)
 
-        # 3. 加载多卡并行 gpu 模型
-        new_state_dict = collections.OrderedDict()
-        for k, v in state_dict.items():
-            if k[:6] == "module":
-                name = k[7:]  # remove `module.`
-                new_state_dict[name] = v
-            else:
-                new_state_dict[k] = v
-        state_dict = new_state_dict
+            # 3. 加载多卡并行 gpu 模型
+            new_state_dict = collections.OrderedDict()
+            for k, v in state_dict.items():
+                if k[:6] == "module":
+                    name = k[7:]  # remove `module.`
+                    new_state_dict[name] = v
+                else:
+                    new_state_dict[k] = v
+            state_dict = new_state_dict
 
-        self.net.load_state_dict(state_dict)
-        # 3. 网络开启 eval 模式
-        self.net = self.net.eval()
+            self.net.load_state_dict(state_dict)
+            # 3. 网络开启 eval 模式
+            self.net = self.net.eval()
         # 4. 初始化特征层解码器
         self.yolov3_decode = model.yolov3decode.YoloV3Decode(config=self.config)
         # 5. 预测结果恢复变换
@@ -123,7 +124,7 @@ class YoloV3(object):
         # 3. 获取预测框
         predict_boxes, _ = self.predict(tensord_image)
         if predict_boxes is None:
-            print("predict_boxes is None")
+            # print("predict_boxes is None")
             return
         # 4. 解析预测框
         predict_boxes = self.rescale_boxes(truth_annotation["raw_image"], predict_boxes)
@@ -143,13 +144,13 @@ class YoloV3(object):
             draw = PIL.ImageDraw.Draw(image)
             draw.rectangle([xmin, ymin, xmax, ymax], outline="#00FF00")
             # 绘制标签
-            font = PIL.ImageFont.truetype("/Users/limengfan/PycharmProjects/210414_CfgYoloV3/assets/simhei.ttf", 32)
+            font = PIL.ImageFont.truetype("/Users/limengfan/PycharmProjects/210429_YoloV3_Experiment/assets/simhei.ttf", 32)
             draw.text([xmin, ymin, xmax, ymax], self.config["labels"][label], font=font, fill="#00FF00")
             del draw
         # 3. 获取预测框
         predict_boxes, predict_feature_list = self.predict(tensord_image)
         if predict_boxes is None:
-            print("predict_boxes is None")
+            # print("predict_boxes is None")
             return image
         # 4. 绘制预测框（红）
         for predict_box in predict_boxes:
@@ -157,7 +158,7 @@ class YoloV3(object):
             draw = PIL.ImageDraw.Draw(image)
             draw.rectangle([xmin, ymin, xmax, ymax], outline="#FF0000")
             # 绘制标签
-            font = PIL.ImageFont.truetype("/Users/limengfan/PycharmProjects/210414_CfgYoloV3/assets/simhei.ttf", 32)
+            font = PIL.ImageFont.truetype("/Users/limengfan/PycharmProjects/210429_YoloV3_Experiment/assets/simhei.ttf", 32)
             draw.text([xmin, ymin, xmax, ymax], self.config["labels"][label], font=font, fill="#FF0000")
             del draw
         # 5. 计算损失

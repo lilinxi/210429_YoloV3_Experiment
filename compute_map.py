@@ -9,6 +9,8 @@ import sys
 
 import numpy as np
 
+print("compute_map...")
+
 # ----------------------------------------------------#
 #   用于计算mAP
 #   代码克隆自https://github.com/Cartucho/mAP
